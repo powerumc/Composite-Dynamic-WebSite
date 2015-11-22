@@ -582,7 +582,8 @@ window.onload = function() {
         body.innerHTML += arr[i].innerHTML;
     }
     
-    oop.import("ActiveBox/jquery.min.js", null, null, true);
+    oop.import("ActiveBox/jquery.min.js", null, dependsOn, true);
+    function dependsOn() {
     oop.import("ActiveBox/js/bootstrap.min.js");
     oop.import("ActiveBox/js/jquery.flexslider-min.js");
     oop.import("ActiveBox/js/jquery.fancybox.pack.js");
@@ -590,6 +591,7 @@ window.onload = function() {
     oop.import("ActiveBox/js/retina.min.js");
     oop.import("ActiveBox/js/modernizr.js");
     oop.import("ActiveBox/js/main.js");
+    }
 };
 
 
