@@ -326,7 +326,8 @@ var oop = (function() {
         isArray: isArray,
         isProperty: isProperty,
         isStatic: isStatic,
-        objects: []
+        objects: [],
+        globals: {}
     }
 
 })();
@@ -367,6 +368,7 @@ oop.xhr = (function(oop) {
         };
     };
     
+    var mimeTypes = [];
     function getContentType(data) {
         if (oop.isObject(data)) return "application/json";
         else if (oop.isString(data) || oop.isNumber(data)) return "text/plain";
@@ -390,16 +392,31 @@ oop.xhr = (function(oop) {
             xhr.xhr.setRequestHeader("Content-Type", getContentType(data));
             xhr.xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
             return xhr;
+        },
+        "getMimeType": function(ext) {
+            for(var i=mimeTypes.length-1; i>=0; i--) {
+                if (mimeTypes[i].ext === ext) 
+                    return mimeTypes[i].mimeType;
+            }
+            return null; 
+        },
+        "setMimeType": function(ext, mimeType) {
+            mimeTypes.push({"ext":ext, "mimeType": mimeType});
+            return this;
         }
+        
     };  
 })(oop);
 
-oop.import = (function(list) {
-    var require = function(define, onLoad) {
+oop.xhr.setMimeType("js", "text/javascript")
+       .setMimeType("css", "text/css")
+       .setMimeType("html", "text/html");
+
+oop.import = (function(list, callback) {
+    function require(define, onLoad) {
         if (!define) return;
         
         var source;
-        
         define.isLiteral = define.isLiteral === undefined ? false : true;
         
         if (!define.sourceKind) {
@@ -412,17 +429,19 @@ oop.import = (function(list) {
         if (!define.isLiteral) {
             if (define.sourceKind === "js") {
                 source = document.createElement("script");
-                source.type = "text/javascript";
+                source.type = oop.xhr.getMimeType("js");
                 source.src = define.url;
                 if (!define.async) { 
                     source.onload = onLoad;
                 }
                 
+                source.attributes["data-id"] = getFilenameWithoutExtension(define.url);
                 if (define.preHandler) define.preHandler(source);
                 append("head");
+                
             } else if (define.sourceKind === "css") {
                 source = document.createElement("link");
-                source.type = "text/css";
+                source.type = oop.xhr.getMimeType("css");
                 source.rel = "stylesheet";
                 source.href = define.url;
                 if (!define.async) { 
@@ -431,8 +450,15 @@ oop.import = (function(list) {
                 
                 if (define.preHandler) define.preHandler(source);
                 append("head");
+                
+            } else {
+                loadFrom(define);
             }
         } else {   
+            loadFrom(define);
+        }
+        
+        function loadFrom(define) {
             var xhr = oop.xhr.get(define.url, function(result) {
             })
             .success(function(result) {
@@ -440,11 +466,15 @@ oop.import = (function(list) {
                 var uniqueId = getFilenameWithoutExtension(define.url);
                 if (!document.getElementById(uniqueId)) {
                     source = document.createElement("script");
-                    source.id = uniqueId;
                     source.innerHTML = result;
-
+                    source.type = oop.xhr.getMimeType(define.url.split(".").pop());
+                    source.id = uniqueId;
+                    source.attributes["data-order"] = count;
+                    
                     if (define.preHandler) define.preHandler(source);
                     append("head");
+                    
+                    if (onLoad) onLoad();
                 }
                 
             })
@@ -456,6 +486,7 @@ oop.import = (function(list) {
         }
 
         function append(nodeName) {
+            sourceList.push(source);
             var dom = document.getElementsByTagName(nodeName) || document.getElementsByTagName("head");
             if (dom.length > 0) {
                 dom[0].appendChild(source);
@@ -464,30 +495,66 @@ oop.import = (function(list) {
         }
 
         function getFilenameWithoutExtension(url) {
-            return url.split('/').pop().split('.')[0];
+            return url.split('/').pop().split('.').slice(0,-1).join(".");
         }
-    };
+    }
+    
+    var sourceList = [];
+    var total = 0;
+    function getTotal(arr) {
+        total++;
+        if (!arr.dependsOn) return true;
+        
+        for(var y=0; y<arr.dependsOn.length; y++) {
+            getTotal(arr.dependsOn[y]);
+        }
+    }
+    
+    for(var i=0; i<list.length; i++) {
+        var result = getTotal(list[i]);
+        if (result) continue;
+    }
+
+    var count = 0;
+    function incrementCount() { return ++count; }
     
     function c(obj, onLoad) {
         if (!obj) return;
         
-        if (oop.isString(obj)) { require( {"url": list[i] }); }
+        if (oop.isString(obj)) { require({"url": list[i]}, function() { c_callback(incrementCount()); }); }
         else {
             if (obj.dependsOn) {
                 if (!oop.isArray(obj.dependsOn)) {
                     throw "dependsOn must be array."
                 }
-                var callback = function(nestedObj) {
+                
+                var cb = function(nestedObj) {
                     for(var d=0; d<nestedObj.dependsOn.length; d++) {
                         c(nestedObj.dependsOn[d]);
                     }
+                    c_callback(incrementCount());
                 };
                 
-                require(obj, function() { callback(obj); });
+                require(obj, function() { cb(obj); });
                 
             } else {
-                require(obj);
+                require(obj, function() { c_callback(incrementCount()); });
             }
+        }
+    }
+    
+    
+    function c_callback(cnt) {
+        console.log(total + ", " + cnt);
+        
+        var sortedList = sourceList.sort(function(a,b) {
+            var aa = a.attributes["data-order"];
+            var bb = b.attributes["data-order"];
+            return aa < bb ? -1 : aa > bb ? 1 : 0;
+        });
+        
+        if (total == cnt) {
+            if (callback) callback(sortedList);
         }
     }
     
@@ -586,6 +653,7 @@ oop.importTemplate = (function(list, callback) {
 
 
 
+oop.xhr.setMimeType("html", "x-nexon-templates");
 
 var css = [
     "ActiveBox/css/bootstrap.min.css",
@@ -594,11 +662,16 @@ var css = [
     "ActiveBox/css/main.css",
     "ActiveBox/css/responsive.css",
     "ActiveBox/css/animate.min.css",
-    "https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css",  
-];
-oop.import(css);
+    "https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"];
 
-
+var js = [  {url:"ActiveBox/jquery.min.js", 
+            dependsOn: [{url:"ActiveBox/js/bootstrap.min.js", 
+                dependsOn:[{url:"ActiveBox/js/jquery.flexslider-min.js"},
+                            {url:"ActiveBox/js/jquery.fancybox.pack.js"},
+                            {url:"ActiveBox/js/jquery.waypoints.min.js"},
+                            {url:"ActiveBox/js/retina.min.js"},
+                            {url:"ActiveBox/js/modernizr.js", dependsOn:[{url:"ActiveBox/js/main.js"}]}]
+                }] }];
 
 var templates = ["templates/banner.html",
                 "templates/features.html",
@@ -606,25 +679,25 @@ var templates = ["templates/banner.html",
                 "templates/teams.html",
                 "templates/testimonials.html",
                 "templates/download.html",
-                "templates/footer.html"];
-oop.importTemplate(templates, function(orderdTemplates) {
+                "templates/footer.html" ];
+
+oop.import(css);
+oop.import(js);
+oop.import(templates, function(orderdTemplates) {
     var body = document.getElementsByTagName("body")[0];
     
+    console.log(orderdTemplates);
     for(var i=0; i<orderdTemplates.length; i++) {
-        if (orderdTemplates[i].type !== "x-nexon-template") continue;
         body.innerHTML += orderdTemplates[i].innerHTML;
     }
 });
 
-window.onload = function() {
-    var js = [  {url:"ActiveBox/jquery.min.js", 
-                dependsOn: [{url:"ActiveBox/js/bootstrap.min.js", 
-                    dependsOn:[{url:"ActiveBox/js/jquery.flexslider-min.js"},
-                               {url:"ActiveBox/js/jquery.fancybox.pack.js"},
-                               {url:"ActiveBox/js/jquery.waypoints.min.js"},
-                               {url:"ActiveBox/js/retina.min.js"},
-                               {url:"ActiveBox/js/modernizr.js", dependsOn:[{url:"ActiveBox/js/main.js"}]}]
-                    }] }];
-    
-    oop.import(js);
-};
+
+// oop.importTemplate(templates, function(orderdTemplates) {
+//     var body = document.getElementsByTagName("body")[0];
+//     
+//     for(var i=0; i<orderdTemplates.length; i++) {
+//         body.innerHTML += orderdTemplates[i].innerHTML;
+//     }
+// });
+// 
