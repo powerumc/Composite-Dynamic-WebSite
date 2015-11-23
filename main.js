@@ -394,56 +394,62 @@ oop.xhr = (function(oop) {
     };  
 })(oop);
 
-oop.import = (function(url, sourceKind, callback, isLiteral, preHandler) {
-    var require = function(url, sourceKind, callback, isLiteral, preHandler) {
+oop.import = (function(list) {
+    var require = function(define, onLoad) {
+        if (!define) return;
+        
         var source;
-        if (!url) return;
         
-        isLiteral = isLiteral === undefined ? false : true;
+        define.isLiteral = define.isLiteral === undefined ? false : true;
         
-        if (!sourceKind) {
-            var arr = url.split(".").slice(-1);
+        if (!define.sourceKind) {
+            var arr = define.url.split(".").slice(-1);
             if (arr.length > 0) {
-                sourceKind = arr[0];
+                define.sourceKind = arr[0];
             }
         }
         
-        if (!isLiteral) {
-            if (sourceKind === "js") {
+        if (!define.isLiteral) {
+            if (define.sourceKind === "js") {
                 source = document.createElement("script");
                 source.type = "text/javascript";
-                source.src = url;
+                source.src = define.url;
+                if (!define.async) { 
+                    source.onload = onLoad;
+                }
                 
-                if (preHandler) preHandler(source);
+                if (define.preHandler) define.preHandler(source);
                 append("head");
-            } else if (sourceKind === "css") {
+            } else if (define.sourceKind === "css") {
                 source = document.createElement("link");
                 source.type = "text/css";
                 source.rel = "stylesheet";
-                source.href = url;
+                source.href = define.url;
+                if (!define.async) { 
+                    source.onload = onLoad;
+                }
                 
-                if (preHandler) preHandler(source);
+                if (define.preHandler) define.preHandler(source);
                 append("head");
             }
         } else {   
-            var xhr = oop.xhr.get(url, function(result) {
-                console.info(result);
+            var xhr = oop.xhr.get(define.url, function(result) {
             })
             .success(function(result) {
                 result = result.replace("\n", "");
-                var uniqueId = getFilenameWithoutExtension(url);
+                var uniqueId = getFilenameWithoutExtension(define.url);
                 if (!document.getElementById(uniqueId)) {
                     source = document.createElement("script");
                     source.id = uniqueId;
                     source.innerHTML = result;
 
-                    if (preHandler) preHandler(source);
+                    if (define.preHandler) define.preHandler(source);
                     append("head");
                 }
                 
             })
             .error(function(result) {
-                if (callback) callback(result);
+                if (define.callback) define.callback(result, define);
             });
             
             xhr.send();
@@ -453,7 +459,7 @@ oop.import = (function(url, sourceKind, callback, isLiteral, preHandler) {
             var dom = document.getElementsByTagName(nodeName) || document.getElementsByTagName("head");
             if (dom.length > 0) {
                 dom[0].appendChild(source);
-                if (callback) callback();
+                if (define.callback) define.callback(source, define);
             }
         }
 
@@ -462,15 +468,75 @@ oop.import = (function(url, sourceKind, callback, isLiteral, preHandler) {
         }
     };
     
-    require.call(this, url, sourceKind, callback, isLiteral, preHandler);
+    function c(obj, onLoad) {
+        if (!obj) return;
+        
+        if (oop.isString(obj)) { require( {"url": list[i] }); }
+        else {
+            if (obj.dependsOn) {
+                if (!oop.isArray(obj.dependsOn)) {
+                    throw "dependsOn must be array."
+                }
+                var callback = function(nestedObj) {
+                    for(var d=0; d<nestedObj.dependsOn.length; d++) {
+                        c(nestedObj.dependsOn[d]);
+                    }
+                };
+                
+                require(obj, function() { callback(obj); });
+                
+            } else {
+                require(obj);
+            }
+        }
+    }
+    
+    for(var i=0; i<list.length; i++) {
+        c(list[i]);
+    }
     
 });
 
-oop.importTemplate = (function(url, callback) {
-    oop.import(url, "", callback, true, function(source) {
-        source.id = source.id + "-template"; 
-        source.type = "x-nexon-template"; 
-    });  
+oop.importTemplate = (function(list, callback) {
+    var loaded = 0;
+    var count = 0;
+    for(var i=0; i<list.length; i++) {
+        var objTemplate = {
+            url: list[i], isLiteral:true, preHandler: function(source) {
+                source.type = "x-nexon-template"; 
+                source.id += "-template";
+                source.attributes["data-order"] = count++;
+            },
+            order: i,
+            callback: function(result, define) {
+                loaded++;
+                result.attributes["data-order"] = define.order;
+                
+                if (loaded == list.length) {
+                    if (callback) callback(getTemplates("x-nexon-template"));
+                } 
+            }
+        };
+        oop.import([objTemplate]);
+    }
+    
+    function getTemplates(scriptType) {
+        scriptType = scriptType || "x-nexon-template";
+        
+        var arr = [];
+        var scripts = document.getElementsByTagName("script");
+        for(var i=0; i<scripts.length; i++) {
+            if (scripts[i].type != scriptType) continue;
+            
+            arr.push(scripts[i]);
+        }
+        
+        return arr.sort(function(a,b) {
+            var aa = a.attributes["data-order"];
+            var bb = b.attributes["data-order"];
+            return aa < bb ? -1 : aa > bb ? 1 : 0;
+        });
+    }
 });
 
 /**
@@ -482,11 +548,9 @@ oop.importTemplate = (function(url, callback) {
     oop.flow = function(obj) {
         return {
             "then": function() {
-                console.info("then");
                 return this;
             },
             "with": function() {
-                console.info("then");
                 return this;
             }
         };
@@ -499,17 +563,17 @@ oop.importTemplate = (function(url, callback) {
             LoggingBehavior: oop.interceptionBehavior(function() {
                                                                     this.date = new Date();
                                                                     if (!this.date) {
-                                                                    console.log(this.date.toLocaleString() + " [js.oop] LoggingBehavior Begin ");
+                                                                    LOG(this.date.toLocaleString() + " [js.oop] LoggingBehavior Begin ");
                                                                     var options = {
                                                                           year: 'numeric', month: 'numeric', day: 'numeric',
                                                                           hour: 'numeric', minute: 'numeric', second: 'numeric',
                                                                           hour12: false
                                                                         };
                                                                     }
-                                                                    console.log("["+this.date.toLocaleString('en-US', this.options)+"] ", arguments);
+                                                                    LOG("["+this.date.toLocaleString('en-US', this.options)+"] ", arguments);
                                                                 },
                                                                 function() { 
-                                                                    console.log(this.date.toLocaleString() + " [js.oop] LoggingBehavior End ")
+                                                                    LOG(this.date.toLocaleString() + " [js.oop] LoggingBehavior End ")
                                                                 }, undefined,undefined),
             ExceptionBehavior: oop.interceptionBehavior(undefined,undefined,undefined,undefined)
         };
@@ -523,79 +587,44 @@ oop.importTemplate = (function(url, callback) {
 
 
 
-
-
-/*
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/flexslider.css">
-    <link rel="stylesheet" href="css/jquery.fancybox.css">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="css/animate.min.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
-*/
-
-oop.import("ActiveBox/css/bootstrap.min.css");
-oop.import("ActiveBox/css/flexslider.css");
-oop.import("ActiveBox/css/jquery.fancybox.css");
-oop.import("ActiveBox/css/main.css");
-oop.import("ActiveBox/css/responsive.css");
-oop.import("ActiveBox/css/animate.min.css");
-oop.import("https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css");
-
-
-/*
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')</script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/jquery.flexslider-min.js"></script>
-    <script src="js/jquery.fancybox.pack.js"></script>
-    <script src="js/jquery.waypoints.min.js"></script>
-    <script src="js/retina.min.js"></script>
-    <script src="js/modernizr.js"></script>
-    <script src="js/main.js"></script>
-*/
+var css = [
+    "ActiveBox/css/bootstrap.min.css",
+    "ActiveBox/css/flexslider.css",
+    "ActiveBox/css/jquery.fancybox.css",
+    "ActiveBox/css/main.css",
+    "ActiveBox/css/responsive.css",
+    "ActiveBox/css/animate.min.css",
+    "https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css",  
+];
+oop.import(css);
 
 
 
-
-
-
-
-
-
-
-
-oop.importTemplate("templates/banner.html");
-oop.importTemplate("templates/features.html");
-oop.importTemplate("templates/works.html");
-oop.importTemplate("templates/teams.html");
-oop.importTemplate("templates/testimonials.html");
-oop.importTemplate("templates/download.html");
-oop.importTemplate("templates/footer.html");
+var templates = ["templates/banner.html",
+                "templates/features.html",
+                "templates/works.html",
+                "templates/teams.html",
+                "templates/testimonials.html",
+                "templates/download.html",
+                "templates/footer.html"];
+oop.importTemplate(templates, function(orderdTemplates) {
+    var body = document.getElementsByTagName("body")[0];
+    
+    for(var i=0; i<orderdTemplates.length; i++) {
+        if (orderdTemplates[i].type !== "x-nexon-template") continue;
+        body.innerHTML += orderdTemplates[i].innerHTML;
+    }
+});
 
 window.onload = function() {
-    var body = document.getElementsByTagName("body")[0];
-    var arr = document.getElementsByTagName("script");
-    for(var i=0; i<arr.length; i++) {
-        if (arr[i].type !== "x-nexon-template") continue;
-        body.innerHTML += arr[i].innerHTML;
-    }
+    var js = [  {url:"ActiveBox/jquery.min.js", 
+                dependsOn: [{url:"ActiveBox/js/bootstrap.min.js", 
+                    dependsOn:[{url:"ActiveBox/js/jquery.flexslider-min.js"},
+                               {url:"ActiveBox/js/jquery.fancybox.pack.js"},
+                               {url:"ActiveBox/js/jquery.waypoints.min.js"},
+                               {url:"ActiveBox/js/retina.min.js"},
+                               {url:"ActiveBox/js/modernizr.js", dependsOn:[{url:"ActiveBox/js/main.js"}]}]
+                    }] }];
     
-    oop.import("ActiveBox/jquery.min.js", null, dependsOn, true);
-    function dependsOn() {
-    oop.import("ActiveBox/js/bootstrap.min.js");
-    oop.import("ActiveBox/js/jquery.flexslider-min.js");
-    oop.import("ActiveBox/js/jquery.fancybox.pack.js");
-    oop.import("ActiveBox/js/jquery.waypoints.min.js");
-    oop.import("ActiveBox/js/retina.min.js");
-    oop.import("ActiveBox/js/modernizr.js");
-    oop.import("ActiveBox/js/main.js");
-    }
+    oop.import(js);
 };
-
-
-
-
-
-
