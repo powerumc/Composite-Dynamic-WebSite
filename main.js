@@ -353,15 +353,15 @@ oop.xhr = (function(oop) {
                 return void(0);
             },
             success: function(callback) {
-                this.xhr.onload = function(e) { callback(e.target.response); };
+                this.xhr.onload = function(e) { callback(e.target.response || e.target.responseText); /* ie9 */ };
                 return this;
             },
             error: function(callback) {
-                this.xhr.onerror = function(e) { callback(e.target.response); };
+                this.xhr.onerror = function(e) { callback(e.target.response || e.target.responseText); };
                 return this;
             },
             timeout: function(callback) {
-                this.ontimeout = function(e) { callback(e.target.response); };
+                this.ontimeout = function(e) { callback(e.target.response || e.target.responseText); };
                 return this;
             }
         };
@@ -436,7 +436,7 @@ oop.import = (function(list) {
             var xhr = oop.xhr.get(define.url, function(result) {
             })
             .success(function(result) {
-                result = result.replace("\n", "");
+                result = (result || "").replace("\n", "");
                 var uniqueId = getFilenameWithoutExtension(define.url);
                 if (!document.getElementById(uniqueId)) {
                     source = document.createElement("script");
@@ -578,7 +578,7 @@ oop.importTemplate = (function(list, callback) {
             ExceptionBehavior: oop.interceptionBehavior(undefined,undefined,undefined,undefined)
         };
 
-})(oop);  
+})(oop);
 
 
 
