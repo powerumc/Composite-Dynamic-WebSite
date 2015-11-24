@@ -137,6 +137,7 @@ var oop = (function() {
     };
 
     var getFunctionParameters = function(func) {
+        if (!func) return [];
         var pattern         = /function[\s\w]*\(([(\w\s, ^\/\*,) ]+)\)/g;
         var pattern_comment = /(\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*)/gm;
         var match = pattern.exec(func.toString());
@@ -234,7 +235,7 @@ var oop = (function() {
         for(var m in methods) {
             m = methods[m];
             p = getFunctionParameters(m);
-            ret.push(injectMethod(p, m));
+            ret.push(injectMethod(m, p));
         }
         return ret;
     };
