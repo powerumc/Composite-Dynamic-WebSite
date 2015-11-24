@@ -632,6 +632,19 @@ oop.import = (function(list, callback) {
     }
 });
 
+oop.globals.ready = [];
+oop.ready = function(resolveCallback) {
+
+    function Ready(resolveCallback) {
+        this.callbacks = resolveCallback;
+    }
+
+    var readyObj = Object.call(Ready, arguments);
+    var r = oop.inject(readyObj[0], {prefix:"oop.globals.imported."});
+
+    oop.globals.ready.push(r[0]);
+};
+
 
 /**
  * OOP Flow
@@ -716,20 +729,6 @@ oop.import(templates, function(orderdTemplates) {
         body.innerHTML += orderdTemplates[i].innerHTML;
     }
 });
-
-
-oop.globals.ready = [];
-oop.ready = function(resolveCallback) {
-
-    function Ready(resolveCallback) {
-        this.callbacks = resolveCallback;
-    }
-
-    var readyObj = Object.call(Ready, arguments);
-    var r = oop.inject(readyObj[0], {prefix:"oop.globals.imported."});
-
-    oop.globals.ready.push(r[0]);
-};
 
 
 oop.ready(function($, Modernizr) {
