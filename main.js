@@ -334,6 +334,33 @@ var oop = (function() {
 
 })();
 
+
+
+(function(oop) {
+
+    function createEvent(name, arg) {
+        var event;
+        if (window.CustomEvent) {
+             event = new CustomEvent(name, {detail: arg});
+        } else if (document.createEvent) {
+            throw "should be implement to createEvent method"
+        }
+
+        return event;
+    }
+
+    oop.subscribe = function(name, callback) {
+        window.addEventListener(name, callback, false);
+    };
+
+    oop.publish = function(name, arg) {
+        window.dispatchEvent(createEvent(name, arg));
+    };
+
+})(oop);
+
+
+
 oop.xhr = (function(oop) {
     var msie = document.documentMode;
     var createHttpRequest = function() {
@@ -414,8 +441,11 @@ oop.xhr.setMimeType("js", "text/javascript")
        .setMimeType("css", "text/css")
        .setMimeType("html", "text/html");
 
+oop.subscribe("js.oop.imported");
+oop.subscribe("js.oop.importingAllCompleted");
 oop.import = (function(list, callback) {
     oop.globals.importedCount = (oop.globals.importedCount || 0)+1;
+    oop.globals.enabledImportingCount = true;
 
     function require(define, onLoad) {
         if (!define) return;
@@ -507,6 +537,7 @@ oop.import = (function(list, callback) {
     var total = 0;
     var count = 0;
     var downloadedCount = 0;
+
     function incrementCount() { return ++downloadedCount; }
     function getIncrementCount() { return downloadedCount; }
 
@@ -550,9 +581,13 @@ oop.import = (function(list, callback) {
         }
     }
     
-    
-      var globalImportingCount = 0;
-  function c_callback(cnt) {
+    function getGlobalImportingCount() { return oop.globals.globalImportingCount; }
+    function incrementGlobalImportingCount() {
+        oop.globals.globalImportingCount = oop.globals.globalImportingCount || 0;
+        oop.globals.globalImportingCount++;
+        return oop.globals.globalImportingCount;
+    }
+    function c_callback(cnt) {
         var sortedList = sourceList.sort(function(a,b) {
             var aa = a.attributes["data-order"];
             var bb = b.attributes["data-order"];
@@ -561,10 +596,10 @@ oop.import = (function(list, callback) {
         if (total == cnt) {
             if (callback) callback(sortedList);
 
-            globalImportingCount += 1;
-
-            if (oop.globals.importedCount === globalImportingCount) {
-                INFO("ALL DOWNLOADED");
+            oop.publish("js.oop.imported", { importedCount : incrementGlobalImportingCount(), object: sortedList });
+            if (oop.globals.importedCount === getGlobalImportingCount()) {
+                oop.globals.enabledImportingCount = false;
+                oop.publish("js.oop.importingAllCompleted");
             }
         }
     }
@@ -573,8 +608,6 @@ oop.import = (function(list, callback) {
         c(list[i]);
     }
 });
-
-
 
 
 /**
@@ -656,11 +689,32 @@ oop.import(css);
 oop.import(js);
 oop.import(templates, function(orderdTemplates) {
     var body = document.getElementsByTagName("body")[0];
-
     for(var i=0; i<orderdTemplates.length; i++) {
         body.innerHTML += orderdTemplates[i].innerHTML;
     }
 });
 
 
-oop.inject()
+
+
+
+
+
+
+oop.ready = function(base, self) {
+    DEBUG(base);
+    DEBUG(self);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
