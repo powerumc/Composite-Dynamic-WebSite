@@ -415,6 +415,8 @@ oop.xhr.setMimeType("js", "text/javascript")
        .setMimeType("html", "text/html");
 
 oop.import = (function(list, callback) {
+    oop.globals.importedCount = (oop.globals.importedCount || 0)+1;
+
     function require(define, onLoad) {
         if (!define) return;
         
@@ -510,10 +512,10 @@ oop.import = (function(list, callback) {
 
     function getTotal(arr) {
         total++;
-        if (!arr.dependsOn) return true;
+        if (!arr.depends) return true;
         
-        for(var y=0; y<arr.dependsOn.length; y++) {
-            getTotal(arr.dependsOn[y]);
+        for(var y=0; y<arr.depends.length; y++) {
+            getTotal(arr.depends[y]);
         }
     }
     
@@ -528,14 +530,14 @@ oop.import = (function(list, callback) {
         if (oop.isString(obj)) { require({"url": list[i], order:count++}, function() { c_callback(incrementCount()); }); }
         else {
             obj.order = count++;
-            if (obj.dependsOn) {
-                if (!oop.isArray(obj.dependsOn)) {
-                    throw "dependsOn must be array."
+            if (obj.depends) {
+                if (!oop.isArray(obj.depends)) {
+                    throw "depends must be array."
                 }
                 
                 var cb = function(nestedObj) {
-                    for(var d=0; d<nestedObj.dependsOn.length; d++) {
-                        c(nestedObj.dependsOn[d]);
+                    for(var d=0; d<nestedObj.depends.length; d++) {
+                        c(nestedObj.depends[d]);
                     }
                     c_callback(incrementCount());
                 };
@@ -549,67 +551,31 @@ oop.import = (function(list, callback) {
     }
     
     
-    function c_callback(cnt) {
-        console.log(total + ", " + cnt);
-        
+      var globalImportingCount = 0;
+  function c_callback(cnt) {
         var sortedList = sourceList.sort(function(a,b) {
             var aa = a.attributes["data-order"];
             var bb = b.attributes["data-order"];
             return aa < bb ? -1 : aa > bb ? 1 : 0;
         });
-        
         if (total == cnt) {
             if (callback) callback(sortedList);
+
+            globalImportingCount += 1;
+
+            if (oop.globals.importedCount === globalImportingCount) {
+                INFO("ALL DOWNLOADED");
+            }
         }
     }
     
     for(var i=0; i<list.length; i++) {
         c(list[i]);
     }
-    
 });
 
-oop.importTemplate = (function(list, callback) {
-    var loaded = 0;
-    var count = 0;
-    for(var i=0; i<list.length; i++) {
-        var objTemplate = {
-            url: list[i], isLiteral:true, preHandler: function(source) {
-                source.type = "x-nexon-template"; 
-                source.id += "-template";
-                source.attributes["data-order"] = count++;
-            },
-            order: i,
-            callback: function(result, define) {
-                loaded++;
-                result.attributes["data-order"] = define.order;
-                
-                if (loaded == list.length) {
-                    if (callback) callback(getTemplates("x-nexon-template"));
-                } 
-            }
-        };
-        oop.import([objTemplate]);
-    }
-    
-    function getTemplates(scriptType) {
-        scriptType = scriptType || "x-nexon-template";
-        
-        var arr = [];
-        var scripts = document.getElementsByTagName("script");
-        for(var i=0; i<scripts.length; i++) {
-            if (scripts[i].type != scriptType) continue;
-            
-            arr.push(scripts[i]);
-        }
-        
-        return arr.sort(function(a,b) {
-            var aa = a.attributes["data-order"];
-            var bb = b.attributes["data-order"];
-            return aa < bb ? -1 : aa > bb ? 1 : 0;
-        });
-    }
-});
+
+
 
 /**
  * OOP Flow
@@ -670,12 +636,12 @@ var css = [
     "https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"];
 
 var js = [  {url:"ActiveBox/jquery.min.js", 
-            dependsOn: [{url:"ActiveBox/js/bootstrap.min.js", 
-                dependsOn:[{url:"ActiveBox/js/jquery.flexslider-min.js"},
+            depends: [{url:"ActiveBox/js/bootstrap.min.js", 
+                depends:[{url:"ActiveBox/js/jquery.flexslider-min.js"},
                             {url:"ActiveBox/js/jquery.fancybox.pack.js"},
                             {url:"ActiveBox/js/jquery.waypoints.min.js"},
                             {url:"ActiveBox/js/retina.min.js"},
-                            {url:"ActiveBox/js/modernizr.js", dependsOn:[{url:"ActiveBox/js/main.js"}]}]
+                            {url:"ActiveBox/js/modernizr.js", depends:[{url:"ActiveBox/js/main.js"}]}]
                 }] }];
 
 var templates = ["templates/banner.html",
@@ -686,9 +652,9 @@ var templates = ["templates/banner.html",
                 "templates/download.html",
                 "templates/footer.html" ];
 
-oop.import(css, function() { DEBUG("css"); });
+oop.import(css);
+oop.import(js);
 oop.import(templates, function(orderdTemplates) {
-    DEBUG("templates");
     var body = document.getElementsByTagName("body")[0];
 
     for(var i=0; i<orderdTemplates.length; i++) {
@@ -696,18 +662,5 @@ oop.import(templates, function(orderdTemplates) {
     }
 });
 
-window.onload = function() {
-    oop.import(js, function() { DEBUG("js"); });
-};
 
-
-
-
-// oop.importTemplate(templates, function(orderdTemplates) {
-//     var body = document.getElementsByTagName("body")[0];
-//     
-//     for(var i=0; i<orderdTemplates.length; i++) {
-//         body.innerHTML += orderdTemplates[i].innerHTML;
-//     }
-// });
-// 
+oop.inject()
