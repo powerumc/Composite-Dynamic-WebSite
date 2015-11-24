@@ -138,7 +138,7 @@ var oop = (function() {
 
     var getFunctionParameters = function(func) {
         if (!func) return [];
-        var pattern         = /function[\s\w]*\(([(\w\s, ^\/\*,) ]+)\)/g;
+        var pattern         = /function[\s\w]*\(([($\w\s, ^\/\*,) ]+)\)/g;
         var pattern_comment = /(\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)|(\/\/.*)/gm;
         var match = pattern.exec(func.toString());
         if (!match) return [];
@@ -207,7 +207,7 @@ var oop = (function() {
         return func_body + func_args;
     }
 
-    var injectMethod = function(m, b) {
+    var injectMethod = function(m, b, o) {
         var p                = getFunctionParameters(m);
         var func_param       = [];
         var func_param_ahead = [];
@@ -217,7 +217,8 @@ var oop = (function() {
                 if (p[i] == "base") func_param.push("this.__base__");
                 else if(p[i] == "self") func_param.push("this");
                 else {
-                    func_param.push(p[i]);
+                    var name = (o.prefix || "") + p[i] + (o.suffix || "");
+                    func_param.push(name);
                     func_param_ahead.push(p[i]);
                 }
             }
@@ -230,13 +231,14 @@ var oop = (function() {
     };
 
     var Inject = function() {
-        var methods = Array.prototype.slice.apply(arguments, []);
+        var m = Array.prototype.slice.apply(arguments, [])[0];
+        var o = arguments.length > 1 ? arguments[1] : null;
         var ret = [];
-        for(var m in methods) {
-            m = methods[m];
+        //for(var m in methods) {
+            //m = methods[m];
             p = getFunctionParameters(m);
-            ret.push(injectMethod(m, p));
-        }
+            ret.push(injectMethod(m, p, o));
+        //}
         return ret;
     };
 
@@ -338,13 +340,16 @@ var oop = (function() {
 
 
 (function(oop) {
-
+    var msie = document.documentMode;
     function createEvent(name, arg) {
+
         var event;
-        if (window.CustomEvent) {
-             event = new CustomEvent(name, {detail: arg});
-        } else if (document.createEvent) {
-            throw "should be implement to createEvent method"
+        if (msie && msie>0 && document.createEvent) {
+            //throw "should be implement to createEvent method"
+            event = document.createEvent("CustomEvent", {detail: arg});
+            event.initEvent(name, true, true);
+        } else if (window.CustomEvent) {
+            event = new CustomEvent(name, {detail: arg});
         }
 
         return event;
@@ -438,12 +443,23 @@ oop.xhr = (function(oop) {
     };  
 })(oop);
 
+(function() {
 oop.xhr.setMimeType("js", "text/javascript")
        .setMimeType("css", "text/css")
        .setMimeType("html", "text/html");
 
 oop.subscribe("js.oop.imported");
-oop.subscribe("js.oop.importingAllCompleted");
+oop.subscribe("js.oop.importingAllCompleted", loaded);
+window.onload = loaded;
+oop.globals.imported = [];
+function loaded(o) {
+    for(var i=0; i<oop.globals.ready.length; i++) {
+        var fn = oop.globals.ready.splice(0,1);
+        fn[0].call(this);
+    }
+}
+})();
+
 oop.import = (function(list, callback) {
     oop.globals.importedCount = (oop.globals.importedCount || 0)+1;
     oop.globals.enabledImportingCount = true;
@@ -470,7 +486,8 @@ oop.import = (function(list, callback) {
                     source.onload = onLoad;
                 }
                 
-                source.attributes["data-id"] = getFilenameWithoutExtension(define.url);
+                source.id = getFilenameWithoutExtension(define.url);
+                source.attributes["data-id"] = source.id;
                 source.attributes["data-order"] = define.order;
                 if (define.preHandler) define.preHandler(source);
                 append("head");
@@ -600,6 +617,11 @@ oop.import = (function(list, callback) {
             oop.publish("js.oop.imported", { importedCount : incrementGlobalImportingCount(), object: sortedList });
             if (oop.globals.importedCount === getGlobalImportingCount()) {
                 oop.globals.enabledImportingCount = false;
+                for(var i in window) {
+                    if (window.hasOwnProperty(i)) {
+                        oop.globals.imported[i] = window[i];
+                    }
+                }
                 oop.publish("js.oop.importingAllCompleted");
             }
         }
@@ -696,16 +718,31 @@ oop.import(templates, function(orderdTemplates) {
 });
 
 
+oop.globals.ready = [];
+oop.ready = function(resolveCallback) {
+
+    function Ready(resolveCallback) {
+        this.callbacks = resolveCallback;
+    }
+
+    var readyObj = Object.call(Ready, arguments);
+    var r = oop.inject(readyObj[0], {prefix:"oop.globals.imported."});
+
+    oop.globals.ready.push(r[0]);
+};
+
+
+oop.ready(function($, Modernizr) {
+    console.log("js.oop ready");
+});
 
 
 
 
 
 
-oop.ready = function(base, self) {
-    DEBUG(base);
-    DEBUG(self);
-}
+
+
 
 
 
