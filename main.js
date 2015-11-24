@@ -25,13 +25,15 @@ github: https://github.com/powerumc/Javascript-OOP-AOP-IoC
 blog  : http://blog.powerumc.kr/
 */
 
-;
-var oop = (function() {
 
-    var LOG   = function() { console.log.apply(console, arguments); };
-    var DEBUG = function() { (console.debug || console.warn).apply(console, arguments); };
-    var TRACE = function() { console.trace.apply(console, arguments); };
-    var ERROR = function() { console.error.apply(console, arguments); };
+
+var LOG   = LOG || function() { console.log.apply(console, arguments); };
+var DEBUG = DEBUG || function() { (console.debug || console.warn).apply(console, arguments); };
+var TRACE = TRACE || function() { console.trace.apply(console, arguments); };
+var ERROR = ERROR || function() { console.error.apply(console, arguments); };
+
+
+var oop = (function() {
 
 
     (function() {
@@ -436,6 +438,7 @@ oop.import = (function(list, callback) {
                 }
                 
                 source.attributes["data-id"] = getFilenameWithoutExtension(define.url);
+                source.attributes["data-order"] = define.order;
                 if (define.preHandler) define.preHandler(source);
                 append("head");
                 
@@ -444,9 +447,8 @@ oop.import = (function(list, callback) {
                 source.type = oop.xhr.getMimeType("css");
                 source.rel = "stylesheet";
                 source.href = define.url;
-                if (!define.async) { 
-                    source.onload = onLoad;
-                }
+                source.attributes["data-order"] = define.order;
+                if (!define.async) { source.onload = onLoad; }
                 
                 if (define.preHandler) define.preHandler(source);
                 append("head");
@@ -468,8 +470,8 @@ oop.import = (function(list, callback) {
                     source = document.createElement("script");
                     source.innerHTML = result;
                     source.type = oop.xhr.getMimeType(define.url.split(".").pop());
-                    source.id = uniqueId;
-                    source.attributes["data-order"] = count;
+                    source.id = uniqueId + "-template";
+                    source.attributes["data-order"] = define.order;
                     
                     if (define.preHandler) define.preHandler(source);
                     append("head");
@@ -501,6 +503,11 @@ oop.import = (function(list, callback) {
     
     var sourceList = [];
     var total = 0;
+    var count = 0;
+    var downloadedCount = 0;
+    function incrementCount() { return ++downloadedCount; }
+    function getIncrementCount() { return downloadedCount; }
+
     function getTotal(arr) {
         total++;
         if (!arr.dependsOn) return true;
@@ -514,15 +521,13 @@ oop.import = (function(list, callback) {
         var result = getTotal(list[i]);
         if (result) continue;
     }
-
-    var count = 0;
-    function incrementCount() { return ++count; }
     
     function c(obj, onLoad) {
         if (!obj) return;
         
-        if (oop.isString(obj)) { require({"url": list[i]}, function() { c_callback(incrementCount()); }); }
+        if (oop.isString(obj)) { require({"url": list[i], order:count++}, function() { c_callback(incrementCount()); }); }
         else {
+            obj.order = count++;
             if (obj.dependsOn) {
                 if (!oop.isArray(obj.dependsOn)) {
                     throw "dependsOn must be array."
@@ -681,16 +686,21 @@ var templates = ["templates/banner.html",
                 "templates/download.html",
                 "templates/footer.html" ];
 
-oop.import(css);
-oop.import(js);
+oop.import(css, function() { DEBUG("css"); });
 oop.import(templates, function(orderdTemplates) {
+    DEBUG("templates");
     var body = document.getElementsByTagName("body")[0];
-    
-    console.log(orderdTemplates);
+
     for(var i=0; i<orderdTemplates.length; i++) {
         body.innerHTML += orderdTemplates[i].innerHTML;
     }
 });
+
+window.onload = function() {
+    oop.import(js, function() { DEBUG("js"); });
+};
+
+
 
 
 // oop.importTemplate(templates, function(orderdTemplates) {
