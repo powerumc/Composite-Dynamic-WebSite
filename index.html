@@ -9,17 +9,49 @@
     <link rel="icon" type="image/png" sizes="32x32" href="ActiveBox/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="ActiveBox/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="ActiveBox/favicon-16x16.png">
+    <link rel="stylesheet" type="text/css" href="css/menu.css">
+    <style type="text/css">
+        #startbutton { z-index:10; position: fixed; left:10px; top: 10px; }
+        #startmenu { z-index:10; position: fixed; left:50px; top: 10px; display:none; }
+        #programs img { width:30px; height:30px; }
+    </style>
     
 	<script type="text/javascript" src="main.js"></script>
-	
-    
+	<script type="text/javascript">
+        oop.ready(function($, Modernizr) {
+            console.log("HTML ready");
+            
+            var $button = $("#startbutton");
+            var $menu = $("#startmenu");
+            $button.click(function() {
+                $menu.show();
+            });
+        });
+    </script>
 	
 </head>
 <body>
-    <script type="text/javascript">
-        oop.ready(function($, Modernizr) {
-            console.log("HTML ready");
-        });
-    </script>
+    <a id="startbutton" href="javascript:void(0);"><img src="img/start_button.png" style="width:50px; height:50px;" /></a>
+    <div id="startmenu">
+        <ul id="programs">
+            <li><a href="#"><img src="http://s.nx.com/s2/game/kart/v2/main/h_logo_201512.png" alt="" />카트라이더</a></li>
+            <li><a href="#"><img src="http://s.nx.com/S2/Game/CSO/event/banner/leftbanner_150521_cartoon15.jpg" alt="" />Google Chrome</a></li>
+            <li><a href="#"><img src="http://file.nexon.com/NxFile/download/FileDownloader.aspx?oidFile=5701597019907297300" alt="" />Safari</a></li>
+            <li><a href="#"><img src="img/opera.png" alt="" />Opera</a></li>
+            <li><a href="#"><img src="img/ie.png" alt="" />Internet Explorer</a></li>
+            <li><a href="#"><img src="img/rss_32.png" alt="" />RSS Feeds</a></li>
+            <li><a href="#"><img src="img/twitter_32.png" alt="" />Twitter</a></li>
+            <li><a href="#"><img src="img/delicious_32.png" alt="" />Delicious</a></li>
+        </ul>
+        <ul id="links">
+            <li class="icon"><img src="img/folder.png" alt="" /></li>
+            <li><a href="#"><span>Documents</span></a></li>
+            <li><a href="#"><span>Pictures</span></a></li>
+            <li><a href="#"><span>Music</span></a></li>
+            <li><a href="#"><span>Computer</span></a></li>
+            <li><a href="#"><span>Network</span></a></li>
+            <li><a href="#"><span>Connect to</span></a></li>
+        </ul>
+    </div>
 </body>	
 </html>
