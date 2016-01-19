@@ -24,7 +24,11 @@
             var $button = $("#startbutton");
             var $menu = $("#startmenu");
             $button.click(function() {
-                $menu.show();
+                if ($menu.is(":visible")) {
+                    $menu.hide();
+                } else {
+                    $menu.show();
+                }
             });
         });
     </script>
@@ -35,22 +39,22 @@
     <div id="startmenu">
         <ul id="programs">
             <li><a href="#"><img src="http://s.nx.com/s2/game/kart/v2/main/h_logo_201512.png" alt="" />카트라이더</a></li>
-            <li><a href="#"><img src="http://s.nx.com/S2/Game/CSO/event/banner/leftbanner_150521_cartoon15.jpg" alt="" />Google Chrome</a></li>
-            <li><a href="#"><img src="http://file.nexon.com/NxFile/download/FileDownloader.aspx?oidFile=5701597019907297300" alt="" />Safari</a></li>
-            <li><a href="#"><img src="img/opera.png" alt="" />Opera</a></li>
-            <li><a href="#"><img src="img/ie.png" alt="" />Internet Explorer</a></li>
-            <li><a href="#"><img src="img/rss_32.png" alt="" />RSS Feeds</a></li>
-            <li><a href="#"><img src="img/twitter_32.png" alt="" />Twitter</a></li>
-            <li><a href="#"><img src="img/delicious_32.png" alt="" />Delicious</a></li>
+            <li><a href="#"><img src="http://s.nx.com/S2/Game/CSO/event/banner/leftbanner_150521_cartoon15.jpg" alt="" />CSO 온라인</a></li>
+            <li><a href="#"><img src="http://file.nexon.com/NxFile/download/FileDownloader.aspx?oidFile=5701597019907297300" alt="" />CSO 온라인 2</a></li>
+            <li><a href="#"><img src="http://s.nx.com/s2/game/bf/bf_obt/banner/151228_qjvkty_s.png" alt="" />버블 파이터</a></li>
+            <li><a href="#"><img src="http://s.nx.com/s2/Game/Maplestory/Maple2013/image/guide/btn_wq02.png" alt="" />메이플스토리</a></li>
+            <li><a href="#"><img src="http://cdn.df.nexon.com/img/web/common/logo.png" alt="" />던전앤파이터</a></li>
+            <li><a href="#"><img src="http://image.heroes.nexon.com/imgHome/tx_logo_01.png" alt="" />마비노기영웅전</a></li>
+            <li><a href="#"><img src="http://s.nx.com/s2/game/fo3/obt/externalassets/players/p180283.png" alt="" />피파온라인</a></li>
         </ul>
         <ul id="links">
             <li class="icon"><img src="img/folder.png" alt="" /></li>
-            <li><a href="#"><span>Documents</span></a></li>
-            <li><a href="#"><span>Pictures</span></a></li>
-            <li><a href="#"><span>Music</span></a></li>
-            <li><a href="#"><span>Computer</span></a></li>
-            <li><a href="#"><span>Network</span></a></li>
-            <li><a href="#"><span>Connect to</span></a></li>
+            <li><a href="#"><span>넥슨</span></a></li>
+            <li><a href="#"><span>개인정보</span></a></li>
+            <li><a href="#"><span>보안센터</span></a></li>
+            <li><a href="#"><span>공지사항</span></a></li>
+            <li><a href="#"><span>온라인게임</span></a></li>
+            <li><a href="#"><span>모바일게임</span></a></li>
         </ul>
     </div>
 </body>	
