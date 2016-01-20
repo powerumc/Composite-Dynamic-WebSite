@@ -726,11 +726,8 @@ oop.import(js);
 oop.import(templates, function(orderdTemplates) {
     var body = document.getElementsByTagName("body")[0];
     for(var i=0; i<orderdTemplates.length; i++) {
-        try {
+        if (body && body.innerHTML && orderdTemplates[i] && orderdTemplates[i].innerHTML)
             body.innerHTML += orderdTemplates[i].innerHTML;
-        } catch(e) {
-            
-        }
     }
 });
 
