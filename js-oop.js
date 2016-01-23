@@ -175,7 +175,7 @@ var oop = (function() {
 
         DEBUG("params ", params);
 
-        var interceptionFunc         = new Function(params.join(","), proxyFunc);
+        var interceptionFunc         = new Function(params.join(","), proxyFunc).bind(this);
         interceptionFunc.constructor = func.constructor;
         interceptionFunc.prototype   = func.prototype;
         interceptionFunc.constructor.prototype[interceptionFunc.prototype.name] = interceptionFunc;
@@ -223,7 +223,7 @@ var oop = (function() {
         var func_body = immediateFunc(m, func_param);
         func_body     = surroundTryCatch(func_body);
 
-        return new Function(func_param_ahead.join(","), func_body);
+        return new Function(func_param_ahead.join(","), func_body).bind(this);
     };
 
     var Inject = function() {
